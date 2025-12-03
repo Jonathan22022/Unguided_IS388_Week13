@@ -4,7 +4,7 @@ import numpy as np
 import joblib
 from sklearn.preprocessing import StandardScaler
 
-df = pd.read_excel("OTP_Time_Series_Master.xlsx")
+df = pd.read_excel("data/OTP_Time_Series_Master.xlsx")
 
 features = [
     "OnTime Departures \n(%)",
@@ -51,4 +51,5 @@ if st.button("Predict Cluster"):
     user_scaled = scaler.transform(user_input)
 
     result = dbscan_model.fit_predict(user_scaled)
+
     st.text(f"Cluster result: {result[0]}")

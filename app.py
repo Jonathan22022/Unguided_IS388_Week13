@@ -10,26 +10,28 @@ st.title("DBSCAN Clustering Prediction")
 df = pd.read_excel("data/OTP_Time_Series_Master.xlsx")
 
 # Bersihkan nama kolom
+df = df.rename(columns=lambda x: x.replace("\n", "").replace("  ", " ").strip())
+
 df = df.rename(columns={
-    "OnTime Departures \n(%)": "Departures",
-    "OnTime Arrivals \n(%)": "Arrivals",
-    "Cancellations \n\n(%)": "Cancellations",
+    "OnTime Departures (%)": "Departures",
+    "OnTime Arrivals (%)": "Arrivals",
+    "Cancellations (%)": "Cancellations",
     "Sectors Flown": "Sectors"
 })
 
 features = ["Departures", "Arrivals", "Cancellations", "Sectors"]
 
-# Hapus baris kosong
+for col in features:
+    df[col] = pd.to_numeric(df[col], errors="coerce")
+
+# Drop nilai tidak valid
 df = df.dropna(subset=features)
 
-# Pastikan numerik
-df[features] = df[features].astype(float)
-
-# Fit scaler dari data
+# Fit scaler ulang
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(df[features])
 
-# Load DBSCAN model
+# Load DBSCAN
 dbscan_model = joblib.load("dbscan_model.sav")
 
 st.markdown("Masukkan nilai fitur untuk memprediksi cluster menggunakan model DBSCAN.")
@@ -43,8 +45,6 @@ with col1:
 with col2:
     canc = st.slider("Cancellations (%)", 0.0, 10.0, 1.0)
     sectors = st.slider("Sectors Flown", 0.0, 500.0, 120.0)
-
-st.text("")
 
 if st.button("Predict Cluster"):
     user_input = np.array([[dep, arr, canc, sectors]])

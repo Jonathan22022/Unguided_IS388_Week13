@@ -6,32 +6,35 @@ from sklearn.preprocessing import StandardScaler
 
 st.title("DBSCAN Clustering Prediction")
 
-# Load data
 df = pd.read_excel("data/OTP_Time_Series_Master.xlsx")
 
-# Bersihkan nama kolom
-df = df.rename(columns=lambda x: x.replace("\n", "").replace("  ", " ").strip())
+st.write("Columns in Excel:", df.columns.tolist())
 
-df = df.rename(columns={
-    "OnTime Departures (%)": "Departures",
-    "OnTime Arrivals (%)": "Arrivals",
-    "Cancellations (%)": "Cancellations",
-    "Sectors Flown": "Sectors"
-})
+clean_cols = df.columns.str.replace("\n", "", regex=False).str.replace(" ", "").str.lower()
 
-features = ["Departures", "Arrivals", "Cancellations", "Sectors"]
+def find_col(keyword):
+    matches = [df.columns[i] for i, col in enumerate(clean_cols) if keyword in col]
+    if matches:
+        return matches[0]
+    else:
+        st.error(f"Kolom dengan keyword '{keyword}' tidak ditemukan!")
+        st.stop()
+
+departures = find_col("ontimedepartures")
+arrivals = find_col("ontimearrivals")
+cancellations = find_col("cancellations")
+sectors = find_col("sectorsflown")
+
+features = [departures, arrivals, cancellations, sectors]
 
 for col in features:
     df[col] = pd.to_numeric(df[col], errors="coerce")
 
-# Drop nilai tidak valid
 df = df.dropna(subset=features)
 
-# Fit scaler ulang
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(df[features])
 
-# Load DBSCAN
 dbscan_model = joblib.load("dbscan_model.sav")
 
 st.markdown("Masukkan nilai fitur untuk memprediksi cluster menggunakan model DBSCAN.")
@@ -44,12 +47,10 @@ with col1:
 
 with col2:
     canc = st.slider("Cancellations (%)", 0.0, 10.0, 1.0)
-    sectors = st.slider("Sectors Flown", 0.0, 500.0, 120.0)
+    sectors_val = st.slider("Sectors Flown", 0.0, 500.0, 120.0)
 
 if st.button("Predict Cluster"):
-    user_input = np.array([[dep, arr, canc, sectors]])
+    user_input = np.array([[dep, arr, canc, sectors_val]])
     user_scaled = scaler.transform(user_input)
-
     result = dbscan_model.fit_predict(user_scaled)
-
     st.success(f"Cluster result: {result[0]}")

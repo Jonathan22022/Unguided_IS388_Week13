@@ -1,7 +1,11 @@
 # prediction.py
 import joblib
-from hdbscan.prediction import approximate_predict
 
 def predict(data):
-    model = joblib.load("hdbscan_model.sav")
-    return approximate_predict(model, data)[0]
+    model = joblib.load("dbscan_model.sav")
+    scaler = joblib.load("scaler_dbscan.sav")
+
+    data_scaled = scaler.transform(data)
+    prediction = model.fit_predict(data_scaled)
+
+    return prediction

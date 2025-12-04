@@ -1,7 +1,7 @@
 # prediction.py
 import joblib
-from hdbscan import approximation as approx
+from hdbscan.prediction import approximate_predict
 
 def predict(data):
     model = joblib.load("hdbscan_model.sav")
-    return approx.approximate_predict(model, data)[0]
+    return approximate_predict(model, data)[0]

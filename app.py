@@ -5,7 +5,7 @@ import numpy as np
 import joblib
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
-from hdbscan import approximation as approx
+from hdbscan.prediction import approximate_predict
 
 # TITLE
 st.title("HDBSCAN Clustering – Streamlit App")
@@ -76,8 +76,7 @@ if st.button("Predict Cluster"):
     user_scaled = scaler.transform(user_input)
 
     # HDBSCAN PREDICTION
-    cluster_label, _ = approx.approximate_predict(model, user_scaled)
-
+    cluster_label, _ = approximate_predict(model, user_scaled)
     st.success(f"Hasil prediksi cluster: {cluster_label[0]}")
 
 # -------------------------
@@ -110,3 +109,4 @@ legend1 = ax.legend(*scatter.legend_elements(), title="Clusters")
 ax.add_artist(legend1)
 
 st.pyplot(fig)
+

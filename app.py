@@ -1,27 +1,31 @@
 # app.py
 import streamlit as st
-import numpy as np
 import pandas as pd
+import numpy as np
 import joblib
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
+from hdbscan import approximation as approx
 
-st.title("DBSCAN Clustering Prediction + Visualization")
+# TITLE
+st.title("HDBSCAN Clustering – Streamlit App")
 
-# -------------------------------------
-# Load dataset
-# -------------------------------------
+# -------------------------
+# LOAD DATA
+# -------------------------
 df = pd.read_excel("data/OTP_Time_Series_Master.xlsx")
+
+st.subheader("Dataset Preview")
+st.dataframe(df.head())
 
 clean_cols = df.columns.str.replace("\n", "", regex=False).str.replace(" ", "").str.lower()
 
 def find_col(keyword):
-    matches = [df.columns[i] for i, col in enumerate(clean_cols) if keyword in col]
-    if matches:
-        return matches[0]
-    else:
-        st.error(f"Kolom '{keyword}' tidak ditemukan!")
-        st.stop()
+    for i, col in enumerate(clean_cols):
+        if keyword in col:
+            return df.columns[i]
+    st.error(f"Kolom '{keyword}' tidak ditemukan!")
+    st.stop()
 
 departures = find_col("ontimedepartures")
 arrivals = find_col("ontimearrivals")
@@ -30,82 +34,79 @@ sectors = find_col("sectorsflown")
 
 features = [departures, arrivals, cancellations, sectors]
 
-# Convert numeric
 for col in features:
     df[col] = pd.to_numeric(df[col], errors="coerce")
 
 df = df.dropna(subset=features)
 
-X = df[features]
+# -------------------------
+# LOAD SCALER + MODEL
+# -------------------------
+scaler = joblib.load("scaler.sav")
+model = joblib.load("hdbscan_model.sav")
 
-# -------------------------------------
-# Load Model & Scaler
-# -------------------------------------
-model = joblib.load("dbscan_model.sav")
-scaler = joblib.load("scaler_dbscan.sav")
+X_scaled = scaler.transform(df[features])
 
-X_scaled = scaler.transform(X)
-labels = model.fit_predict(X_scaled)
+# -------------------------
+# CLUSTERING RESULT
+# -------------------------
+labels = model.labels_
 df["Cluster"] = labels
 
-st.subheader("Cluster Summary")
+st.subheader("Cluster Distribution")
 st.write(df["Cluster"].value_counts())
 
 st.dataframe(df[["Cluster"] + features].head())
 
-# -------------------------------------
-# User Input Form
-# -------------------------------------
-st.markdown("### Prediksi Cluster Berdasarkan Input User")
+# -------------------------
+# USER INPUT PREDICTION
+# -------------------------
+st.markdown("### Prediksi Cluster (User Input)")
 
 col1, col2 = st.columns(2)
-
 with col1:
-    dep = st.slider("OnTime Departures (%)", 0.0, 100.0, 80.0)
-    arr = st.slider("OnTime Arrivals (%)", 0.0, 100.0, 75.0)
-
+    dep = st.slider("OnTime Departures (%)", 0.0, 100.0, 70.0)
+    arr = st.slider("OnTime Arrivals (%)", 0.0, 100.0, 65.0)
 with col2:
     canc = st.slider("Cancellations (%)", 0.0, 10.0, 1.0)
-    sec = st.slider("Sectors Flown", 0.0, 500.0, 150.0)
-
-user_cluster = None
+    sectors_val = st.slider("Sectors Flown", 0.0, 500.0, 120.0)
 
 if st.button("Predict Cluster"):
-    user_input = np.array([[dep, arr, canc, sec]])
+    user_input = np.array([[dep, arr, canc, sectors_val]])
     user_scaled = scaler.transform(user_input)
-    user_cluster = model.fit_predict(user_scaled)[0]
-    st.success(f"Cluster Prediction: **{user_cluster}**")
 
-# -------------------------------------
-# PCA Visualization
-# -------------------------------------
-st.subheader("Visualisasi DBSCAN dengan PCA")
+    # HDBSCAN PREDICTION
+    cluster_label, _ = approx.approximate_predict(model, user_scaled)
+
+    st.success(f"Hasil prediksi cluster: {cluster_label[0]}")
+
+# -------------------------
+# PCA VISUALIZATION
+# -------------------------
+st.subheader("HDBSCAN PCA Visualization")
 
 pca = PCA(n_components=2)
 X_pca = pca.fit_transform(X_scaled)
 
 fig, ax = plt.subplots(figsize=(8, 6))
 scatter = ax.scatter(
-    X_pca[:, 0], X_pca[:, 1],
-    c=labels, s=60, alpha=0.7
+    X_pca[:, 0],
+    X_pca[:, 1],
+    c=labels,
+    s=50,
+    alpha=0.7
 )
 
-if user_cluster is not None:
+# Plot user input
+if 'user_scaled' in locals():
     user_pca = pca.transform(user_scaled)
-    ax.scatter(
-        user_pca[0, 0], user_pca[0, 1],
-        s=200, marker="X", color="red",
-        label="User Input"
-    )
+    ax.scatter(user_pca[0, 0], user_pca[0, 1], s=200, marker="X")
 
+ax.set_title("HDBSCAN Clustering (PCA 2D)")
 ax.set_xlabel("PC1")
 ax.set_ylabel("PC2")
-ax.set_title("DBSCAN Clustering (PCA)")
 
-legend = ax.legend(*scatter.legend_elements(), title="Clusters")
-ax.add_artist(legend)
-
-if user_cluster is not None:
-    ax.legend()
+legend1 = ax.legend(*scatter.legend_elements(), title="Clusters")
+ax.add_artist(legend1)
 
 st.pyplot(fig)

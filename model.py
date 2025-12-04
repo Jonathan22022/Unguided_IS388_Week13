@@ -45,7 +45,7 @@ X_scaled = scaler.fit_transform(X)
 # -----------------------------
 # 3. DBSCAN Model
 # -----------------------------
-model = DBSCAN(eps=0.8, min_samples=5)
+model = DBSCAN(eps=2.0, min_samples=3)
 model.fit(X_scaled)
 
 # -----------------------------
@@ -55,3 +55,4 @@ joblib.dump(model, "dbscan_model.sav")
 joblib.dump(scaler, "scaler_dbscan.sav")
 
 print("Model & Scaler saved successfully!")
+

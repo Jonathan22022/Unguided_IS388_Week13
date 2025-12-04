@@ -4,5 +4,5 @@ numpy
 scikit-learn
 matplotlib
 joblib
-hdbscan
+hdbscan==0.8.33
 openpyxl

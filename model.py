@@ -45,8 +45,10 @@ X_scaled = scaler.fit_transform(df[features])
 clusterer = hdbscan.HDBSCAN(
     min_cluster_size=10,
     min_samples=3,
-    cluster_selection_epsilon=0.5
+    cluster_selection_epsilon=0.5,
+    prediction_data=True   # ← WAJIB
 )
+
 
 clusterer.fit(X_scaled)
 
@@ -57,3 +59,4 @@ joblib.dump(clusterer, "hdbscan_model.sav")
 joblib.dump(scaler, "scaler.sav")
 
 print("Model HDBSCAN dan scaler berhasil disimpan!")
+

@@ -3,24 +3,23 @@ import pandas as pd
 import numpy as np
 import joblib
 from sklearn.preprocessing import StandardScaler
-from sklearn.cluster import DBSCAN
+import hdbscan
 
-# -----------------------------
-# 1. Load Dataset
-# -----------------------------
+# -------------------------------
+# LOAD DATASET
+# -------------------------------
 df = pd.read_excel("data/OTP_Time_Series_Master.xlsx")
 
-# Cleaning column names
+# Clean column names
 clean_cols = df.columns.str.replace("\n", "", regex=False).str.replace(" ", "").str.lower()
 
 def find_col(keyword):
-    matches = [df.columns[i] for i, col in enumerate(clean_cols) if keyword in col]
-    if matches:
-        return matches[0]
-    else:
-        raise ValueError(f"Kolom dengan keyword '{keyword}' tidak ditemukan!")
+    for i, col in enumerate(clean_cols):
+        if keyword in col:
+            return df.columns[i]
+    raise Exception(f"Kolom '{keyword}' tidak ditemukan!")
 
-# Cari kolom fitur
+# Kolom yang dipakai
 departures = find_col("ontimedepartures")
 arrivals = find_col("ontimearrivals")
 cancellations = find_col("cancellations")
@@ -28,31 +27,33 @@ sectors = find_col("sectorsflown")
 
 features = [departures, arrivals, cancellations, sectors]
 
-# Convert ke numeric
+# Convert numeric
 for col in features:
     df[col] = pd.to_numeric(df[col], errors="coerce")
 
 df = df.dropna(subset=features)
 
-X = df[features]
-
-# -----------------------------
-# 2. Scaling
-# -----------------------------
+# -------------------------------
+# SCALING
+# -------------------------------
 scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
+X_scaled = scaler.fit_transform(df[features])
 
-# -----------------------------
-# 3. DBSCAN Model
-# -----------------------------
-model = DBSCAN(eps=2.0, min_samples=3)
-model.fit(X_scaled)
+# -------------------------------
+# TRAIN HDBSCAN MODEL
+# -------------------------------
+clusterer = hdbscan.HDBSCAN(
+    min_cluster_size=10,
+    min_samples=3,
+    cluster_selection_epsilon=0.5
+)
 
-# -----------------------------
-# 4. Save model & scaler
-# -----------------------------
-joblib.dump(model, "dbscan_model.sav")
-joblib.dump(scaler, "scaler_dbscan.sav")
+clusterer.fit(X_scaled)
 
-print("Model & Scaler saved successfully!")
+# -------------------------------
+# SAVE MODEL & SCALER
+# -------------------------------
+joblib.dump(clusterer, "hdbscan_model.sav")
+joblib.dump(scaler, "scaler.sav")
 
+print("Model HDBSCAN dan scaler berhasil disimpan!")

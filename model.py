@@ -1,57 +1,52 @@
-# model.py
-import pandas as pd
 import numpy as np
-import joblib
+import pandas as pd
 from sklearn.preprocessing import StandardScaler
-from sklearn.cluster import DBSCAN
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
 
-# -----------------------------
-# 1. Load Dataset
-# -----------------------------
-df = pd.read_excel("data/OTP_Time_Series_Master.xlsx")
+def load_and_prepare():
+    df = pd.read_excel("data/OTP_Time_Series_Master.xlsx")
 
-# Cleaning column names
-clean_cols = df.columns.str.replace("\n", "", regex=False).str.replace(" ", "").str.lower()
+    # Bersihkan nama kolom
+    df.columns = (
+        df.columns
+        .str.replace("\n", " ", regex=False)
+        .str.replace("  ", " ", regex=False)
+        .str.strip()
+    )
 
-def find_col(keyword):
-    matches = [df.columns[i] for i, col in enumerate(clean_cols) if keyword in col]
-    if matches:
-        return matches[0]
-    else:
-        raise ValueError(f"Kolom dengan keyword '{keyword}' tidak ditemukan!")
+    # Kolom numerik
+    num_cols = [
+        'Sectors Scheduled',
+        'Sectors Flown',
+        'Cancellations',
+        'Departures On Time',
+        'Arrivals On Time',
+        'Departures Delayed',
+        'Arrivals Delayed',
+        'OnTime Departures (%)',
+        'OnTime Arrivals (%)',
+        'Cancellations  (%)'
+    ]
 
-# Cari kolom fitur
-departures = find_col("ontimedepartures")
-arrivals = find_col("ontimearrivals")
-cancellations = find_col("cancellations")
-sectors = find_col("sectorsflown")
+    df = df.replace("na", np.nan)
+    df = df.dropna(subset=num_cols)
 
-features = [departures, arrivals, cancellations, sectors]
+    data = df[num_cols]
 
-# Convert ke numeric
-for col in features:
-    df[col] = pd.to_numeric(df[col], errors="coerce")
+    # Scaling
+    scaler = StandardScaler()
+    scaled_data = scaler.fit_transform(data)
 
-df = df.dropna(subset=features)
+    return df, scaled_data
 
-X = df[features]
 
-# -----------------------------
-# 2. Scaling
-# -----------------------------
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
+def cluster_and_pca(scaled_data, k):
+    kmeans = KMeans(n_clusters=k, random_state=42)
+    clusters = kmeans.fit_predict(scaled_data)
 
-# -----------------------------
-# 3. DBSCAN Model
-# -----------------------------
-model = DBSCAN(eps=0.8, min_samples=5)
-model.fit(X_scaled)
+    # PCA 2D
+    pca = PCA(n_components=2)
+    pca_result = pca.fit_transform(scaled_data)
 
-# -----------------------------
-# 4. Save model & scaler
-# -----------------------------
-joblib.dump(model, "dbscan_model.sav")
-joblib.dump(scaler, "scaler_dbscan.sav")
-
-print("Model & Scaler saved successfully!")
+    return clusters, pca_result, kmeans, pca
